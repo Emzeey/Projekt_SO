@@ -9,17 +9,32 @@
 typedef struct {
     int player_id;
     int cards[NUM_CARDS_PER_PLAYER];
+    int current_card;
 } Player;
 
 pthread_mutex_t lock;
+int current_value = 0;
 
-void *distribute_cards(void *arg) {
+void *play_game(void *arg) {
     Player *player = (Player *)arg;
-    printf("Player %d cards: ", player->player_id);
+    int card_played = -1;
+
+    pthread_mutex_lock(&lock);
     for (int i = 0; i < NUM_CARDS_PER_PLAYER; i++) {
-        printf("%d ", player->cards[i]);
+        if (player->cards[i] >= current_value) {
+            card_played = player->cards[i];
+            player->cards[i] = -1;  // Mark card as played
+            current_value = card_played;
+            printf("Player %d plays: %d\n", player->player_id, card_played);
+            break;
+        }
     }
-    printf("\n");
+    pthread_mutex_unlock(&lock);
+
+    if (card_played == -1) {
+        printf("Player %d cannot play any card.\n", player->player_id);
+    }
+
     return NULL;
 }
 
@@ -64,13 +79,22 @@ int main() {
         }
     }
 
-    for (int i = 0; i < num_players; i++) {
-        pthread_create(&threads[i], NULL, distribute_cards, &players[i]);
+    pthread_mutex_init(&lock, NULL);
+
+    int round = 0;
+    while (round < NUM_CARDS_PER_PLAYER) {
+        for (int i = 0; i < num_players; i++) {
+            pthread_create(&threads[i], NULL, play_game, &players[i]);
+        }
+
+        for (int i = 0; i < num_players; i++) {
+            pthread_join(threads[i], NULL);
+        }
+
+        round++;
     }
 
-    for (int i = 0; i < num_players; i++) {
-        pthread_join(threads[i], NULL);
-    }
+    pthread_mutex_destroy(&lock);
 
     return 0;
 }
