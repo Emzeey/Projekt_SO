@@ -18,6 +18,7 @@ int current_value = 0;
 void *play_game(void *arg) {
     Player *player = (Player *)arg;
     int card_played = -1;
+    prinff("test\n");
 
     pthread_mutex_lock(&lock);
     for (int i = 0; i < NUM_CARDS_PER_PLAYER; i++) {
